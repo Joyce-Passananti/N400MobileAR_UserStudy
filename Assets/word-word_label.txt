@@ -29,10 +29,10 @@ Trashcan
 StopSign
 Sunflower
 FryingPan
-Notebook
+Pinboard
 Dryer
 Bear
-Keyboard*
+Keyboard
 Clock
 Table
 Laptop

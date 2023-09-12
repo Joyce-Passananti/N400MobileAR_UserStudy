@@ -17,7 +17,7 @@ public class n400comparison_models : MonoBehaviour
     public GameObject models;
     public Text label;
 
-    private List<GameObject> objects = new List<GameObject>();
+    // private List<GameObject> objects = new List<GameObject>();
     int nModels;
 
     IEnumerable<int> ranOrder;
@@ -26,7 +26,7 @@ public class n400comparison_models : MonoBehaviour
     private float nextPause;
     private float nextTrial;
     private float nextText;
-    private int counter = 40;
+    private int counter = 0;
     private string dir = "";
 
     private bool started = false;
@@ -35,33 +35,27 @@ public class n400comparison_models : MonoBehaviour
     private int section = 1;
     private bool pause = false;
 
+    private int[] record;
+    private float[] responseTime;
+    private List<float> times = new List<float>();
+    private List<string> objects = new List<string>();
     List<bool> booleans = new List<bool>();
     List<bool> truth = new List<bool>();
 
-
-    private int[] record;
-
-    //private string filePath;
+    // filePath config:
     private string dirPath = "assets/";
     private string mlDirPath = "/documents/C1/";
+    private string filePath = "assets/n400comparison";
+    private string mlFilePath = "/documents/C1/n400comparison";
 
-
-    // control_audiotest config:
-    public GameObject cube;
-    public GameObject sphere;
-
+    // audio config:
     AudioSource audioSource;
 
     public int position = 0;
     public int samplerate = 44100;
     public float frequency = 4400;
 
-    private string filePath = "assets/n400comparison";
-    private string mlFilePath = "/documents/C1/n400comparison";
 
-    private List<String> times = new List<String>();
-    private List<String> obj = new List<string>();
-    private float t;
 
     // Start is called before the first frame update
     void Start()
@@ -77,8 +71,8 @@ public class n400comparison_models : MonoBehaviour
         nModels = models.transform.childCount;
         models.SetActive(true);
 
-        print(nModels);
         record = new int[nModels * 2];
+        responseTime = new float[nModels * 2];
 
         ranOrder = Enumerable.Range(0, models.transform.childCount).OrderBy(x => UnityEngine.Random.value).ToList();
         Debug.Log(ranOrder.Count());
@@ -100,57 +94,58 @@ public class n400comparison_models : MonoBehaviour
 
         //audio
         AudioClip myClip = AudioClip.Create("MySinusoid", samplerate / 2, 1, samplerate, true, OnAudioRead, OnAudioSetPosition);
-        cube.SetActive(false);
         audioSource = GetComponent<AudioSource>();
         audioSource.clip = myClip;
 
         /*MLInput.OnControllerButtonDown += OnButtonDown;
         _controller = MLInput.GetController(MLInput.Hand.Left);
         */
-
-        startStudy();
     }
 
     // Update is called once per frame
     void Update()
     {
+        if (Input.GetKeyDown(KeyCode.Space))
+            if (counter == 0)
+                startStudy();
         if (Input.GetKeyDown(KeyCode.M))
-            record[counter + (nModels * stage)] = 1;
+        {
+            record[counter + (nModels * stage) - 1] = 1;
+            responseTime[counter + (nModels * stage) - 1] = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - times[times.Count-1];
+        }
+            
         if (Input.GetKeyDown(KeyCode.Z))
-            record[counter + (nModels * stage)] = 2;
+        {
+            record[counter + (nModels * stage) - 1] = 2;
+            responseTime[counter + (nModels * stage) - 1] = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - times[times.Count - 1];
+        }
+            
 
         if (counter == models.transform.childCount && stage == 0)
         {
             stage = 1;
-            label.text = "Done with stage 1. The next stage will start shortly.";
+            label.text = "Done with stage 1. Press 'Space' to begin the next stage. ";
             started = false;
+            counter = 0;
             startStudy();
         }
-        
 
         if (started && counter < models.transform.childCount)
         {
             if (Time.time - startTime > nextModel)
             {
-                print("model");
-
                 label.text = "";
                 models.transform.GetChild(ranOrder.ElementAt(counter)).gameObject.SetActive(true);
-
+                objects.Add(models.transform.GetChild(ranOrder.ElementAt(counter)).gameObject.name);
                 nextModel += 5f;
             }
             else if (Time.time - startTime > nextPause)
             {
-                print("pause");
-
                 models.transform.GetChild(ranOrder.ElementAt(counter)).gameObject.SetActive(false);
-
                 nextPause += 5f;
             }
             else if (Time.time - startTime > nextText)
             {
-                print("text");
-
                 if ((stage == 0) == truth[counter])
                 {
                     label.text = models.transform.GetChild(ranOrder.ElementAt(counter)).gameObject.name;
@@ -161,18 +156,15 @@ public class n400comparison_models : MonoBehaviour
                     label.text = models.transform.GetChild(ran).gameObject.name;
                 }
                 audioSource.Play();
-                times.Add(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds().ToString());
+                times.Add(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
+                counter++;
 
                 nextText += 5f;
             }
             else if (Time.time - startTime > nextTrial)
             {
-                print("trial");
-
                 label.text = "";
-
                 nextTrial += 5f;
-                counter++;
             }
             if (counter == models.transform.childCount && stage == 1) complete = true;
         }
@@ -190,13 +182,12 @@ public class n400comparison_models : MonoBehaviour
 
     void startStudy()
     {
-        nextModel = 11f;
-        nextPause = 12f;
-        nextText = 13f;
-        nextTrial = 14f;
+        nextModel = 1f;
+        nextPause = 2f;
+        nextText = 3f;
+        nextTrial = 4f;
 
         startTime = Time.time;
-        counter = 0;
         started = true;
     }
 
@@ -234,10 +225,10 @@ public class n400comparison_models : MonoBehaviour
         }
 
         StreamWriter writer = new StreamWriter(filePath + t + ".txt");
-        writer.WriteLine("Object, Time, Clicked, truth");
+        writer.WriteLine("Object, Time, ResponseTime, Clicked, truth");
         for (int i = 0; i < times.Count; ++i)
         {
-            writer.WriteLine(i + ", " + times[i] + ", " + record[i] + ", " + truth[i]);
+            writer.WriteLine(objects[i] + ", " + times[i].ToString() + ", " + responseTime[i] + ", " + record[i] + ", " + truth[i]) ;
         }
         writer.Close();
     }

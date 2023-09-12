@@ -41,9 +41,10 @@ public class n400comparison_text : MonoBehaviour
 
     List<bool> booleans = new List<bool>();
     List<bool> truth = new List<bool>();
-
-
+    private List<float> times = new List<float>();
+    private List<string> words = new List<string>();
     private int[] record;
+    private float[] responseTime;
 
     //private string filePath;
     private string dirPath = "assets/";
@@ -62,10 +63,6 @@ public class n400comparison_text : MonoBehaviour
 
     private string filePath = "assets/n400comparison";
     private string mlFilePath = "/documents/C1/n400comparison";
-
-    private List<String> times = new List<String>();
-    private List<String> obj = new List<string>(); 
-    private float t;
 
     // Start is called before the first frame update
     void Start()
@@ -104,6 +101,7 @@ public class n400comparison_text : MonoBehaviour
 
         nWords = labels.Count;
         record = new int[nWords * 2];
+        responseTime = new float[nWords * 2];
 
         ranOrder = Enumerable.Range(0, nWords).OrderBy(x => UnityEngine.Random.value).ToList();
         Debug.Log(ranOrder.Count());
@@ -132,24 +130,32 @@ public class n400comparison_text : MonoBehaviour
          * MLInput.OnControllerButtonDown += OnButtonDown;
         _controller = MLInput.GetController(MLInput.Hand.Left);
         */
-
-        startStudy();
     }
 
     // Update is called once per frame
     void Update()
     {
+        if (Input.GetKeyDown(KeyCode.Space))
+            if (counter == 0)
+                startStudy();
         if (Input.GetKeyDown(KeyCode.M))
-            record[counter + (nWords * stage)] = 1;
+        {
+            record[counter + (nWords * stage) - 1] = 1;
+            responseTime[counter + (nWords * stage) - 1] = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - times[times.Count - 1];
+        }
+
         if (Input.GetKeyDown(KeyCode.Z))
-            record[counter + (nWords * stage)] = 2;
+        {
+            record[counter + (nWords * stage) - 1] = 2;
+            responseTime[counter + (nWords * stage) - 1] = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - times[times.Count - 1];
+        }
 
         if (counter == nWords && stage == 0)
         {
             stage = 1;
-            label.text = "Done with stage 1. The next stage will start shortly.";
+            label.text = "Done with stage 1. Press 'Space' to begin the next stage. ";
             started = false;
-            startStudy();
+            counter = 0;
         }
 
         if (started && counter < nWords)
@@ -158,6 +164,7 @@ public class n400comparison_text : MonoBehaviour
             if (Time.time - startTime > nextModel)
             {
                 label.text = labels[ranOrder.ElementAt(counter)];
+                words.Add(labels[ranOrder.ElementAt(counter)]);
                 nextModel += 5f;
             }
 
@@ -181,7 +188,7 @@ public class n400comparison_text : MonoBehaviour
                     label.text = labels2[ran];
                 }
                 audioSource.Play();
-                times.Add(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds().ToString());
+                times.Add(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
 
                 nextText += 5f;
             }
@@ -213,10 +220,10 @@ public class n400comparison_text : MonoBehaviour
     // start study section
     void startStudy()
     {
-        nextModel = 11f;
-        nextPause = 12f;
-        nextText = 13f;
-        nextTrial = 14f;
+        nextModel = 1f;
+        nextPause = 2f;
+        nextText = 3f;
+        nextTrial = 4f;
 
         startTime = Time.time;
         counter = 0;
@@ -232,10 +239,10 @@ public class n400comparison_text : MonoBehaviour
         }
 
         StreamWriter writer = new StreamWriter(filePath + t + ".txt");
-        writer.WriteLine("Object, Time, Clicked, truth");
+        writer.WriteLine("Word, Time, RespponseTime, Clicked, truth");
         for (int i = 0; i < times.Count; ++i)
         {
-            writer.WriteLine(i + ", " + times[i] + ", " + record[i] + ", " + truth[i]);
+            writer.WriteLine(words[i] + ", " + times[i].ToString() + ", "  + responseTime[i] + ", " + record[i] + ", " + truth[i]);
         }
         writer.Close();
     }
